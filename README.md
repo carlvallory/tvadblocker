@@ -6,6 +6,7 @@ TV Ad blocker using OBS Studio and OpenCV (simple logo detection using template 
 - [OBS Studio](https://github.com/obsproject/obs-studio/releases/).
 - [OBS Websocket plugin](https://github.com/obsproject/obs-websocket/releases).
 - [obs-ndi plugin](https://github.com/Palakis/obs-ndi/releases/). Be sure to also download the NDI runtime.
+- [Tesseract-OCR] (https://github.com/tesseract-ocr/tesseract)
 - Install the required packages with:
 - ```pip install -r requirements.txt```
 
