@@ -126,8 +126,6 @@ class TVAdBlocker:
                     self.ws.call(requests.SetCurrentScene(self.tv_scene))
                 else:
                     try:
-                        #pytesseract.pytesseract.tesseract_cmd = r'C:\Users\USER\AppData\Local\Tesseract-OCR\tesseract.exe'
-                        
                         path = self.path
                         fileName = self.fileName
                         filePath = os.path.join(path, f"{fileName}")
