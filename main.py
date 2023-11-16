@@ -45,10 +45,10 @@ class TVAdBlocker:
         self.directory = config['directory']['folder'] # IMAGE DIRECTORY
         self.imgFormat = config['directory']['format']
 
-        self.path           = config["opencv"]['path']
-        self.fileName       = config["opencv"]['fileName']
+        self.path           = config["opencv"]['img_path']
+        self.fileName       = config["opencv"]['readName']
         self.filePath       = None
-        self.fileSaveName   = config["opencv"]['fileSaveName']
+        self.fileSaveName   = config["opencv"]['writeName']
 
         self.config         = config["tesseract"]['config']
         self.detect         = config["tesseract"]['detect']
