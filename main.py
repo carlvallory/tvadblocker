@@ -1,13 +1,12 @@
 import base64
 import cv2
-import numpy as np
 import NDIlib as ndi
+import numpy as np
 import os
 import pytextractor
 import time
-
-from configparser import ConfigParser
 from obswebsocket import obsws, requests
+from configparser import ConfigParser
 
 #    O Orientation and script detection (OSD) only
 #    1 Automatic page segmentation with OSD.
@@ -46,7 +45,6 @@ class TVAdBlocker:
         self.directory = config['directory']['folder'] # IMAGE DIRECTORY
         self.imgFormat = config['directory']['format']
 
-        #Datos
         self.path           = config["opencv"]['path']
         self.fileName       = config["opencv"]['fileName']
         self.filePath       = None
@@ -69,9 +67,18 @@ class TVAdBlocker:
                 sceneName = scene.getName()
                 file_path = os.path.join(directory, f"{sceneName}.{self.imgFormat}")
  
+
                 screenshot = self.ws.call(requests.TakeSourceScreenshot(sourceName=sceneName, embedPictureFormat=self.imgFormat, saveToFilePath=file_path))
+                #print(screenshot.data()['sourceName'])
+                
+                #screenshot_data_64 = screenshot.datain['img']
+                #header, encoded_64 = screenshot_data_64.split("base64,", 1)
+                #screenshot_data_byte = base64.b64decode(encoded_64)
                 
                 screenshot_blob = cv2.imread(file_path)
+
+                # Convert the screenshot to a NumPy array
+                #img = np.frombuffer(screenshot_data_byte, dtype=np.uint8)
 
                 # Convert RGBA to BGR (OpenCV format)
                 #frame = cv.cvtColor(img, cv.COLOR_RGBA2BGR)
@@ -151,16 +158,16 @@ class TVAdBlocker:
                                 break
                         
                         if flag == True:
-                            print("Letters detected")
+                            print("Text detected")
                             self.ws.call(requests.SetCurrentScene(self.tv_scene))
                         else:
                             self.ws.call(requests.SetCurrentScene(self.ad_scene))
-                            print("No logo detected, ads? 👀")
+                            print("No Text Or Logo detected, ads? 👀")
 
                     except Exception as e:
                         print(f"Error: {e}")
                     finally:
-                        print("tesseract")
+                        print("Tesseract")
 
                 time.sleep(self.sleep)
 
