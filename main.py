@@ -29,29 +29,28 @@ class TVAdBlocker:
         config.read("config.ini")
 
         # datos websocket
-        self.host = config["websocket"]["host"]
-        self.port = config["websocket"]["port"]
-        self.password = config["websocket"]["password"]
-        self.ws = obsws(self.host, self.port, self.password)
+        self.host       = config["websocket"]["host"]
+        self.port       = config["websocket"]["port"]
+        self.password   = config["websocket"]["password"]
+        self.ws         = obsws(self.host, self.port, self.password)
 
         self.logo_path  = config["opencv"]["logo_path"]  # logo to detect
-        self.tv_scene = config["obs"]["tv_scene"]  # OBS scene where the TV program is
-        self.ad_scene = config["obs"]["ad_scene"]  # OBS scene to show during ads
-        self.obs_item = config["obs"]["obs_item"]  # OBS scene to show during ads
-        self.threshold = float(config["opencv"]["threshold"])  # threshold to detect the logo
-        self.matchmode = config["opencv"]["matchmode"] # matchmode method algorithm
-        self.sleep    = int(config["opencv"]["sleep"]) # sleep time to detect the logo
+        self.tv_scene   = config["obs"]["tv_scene"]  # OBS scene where the TV program is
+        self.ad_scene   = config["obs"]["ad_scene"]  # OBS scene to show during ads
+        self.obs_item   = config["obs"]["obs_item"]  # OBS scene to show during ads
+        self.threshold  = float(config["opencv"]["threshold"])  # threshold to detect the logo
+        self.matchmode  = config["opencv"]["matchmode"] # matchmode method algorithm
+        self.sleep      = int(config["opencv"]["sleep"]) # sleep time to detect the logo
         
-        self.directory = config['directory']['folder'] # IMAGE DIRECTORY
-        self.imgFormat = config['directory']['format']
-
-        self.path           = config["opencv"]['img_path']
-        self.fileName       = config["opencv"]['readName']
+        self.config     = config["tesseract"]['config']
+        self.detect     = config["tesseract"]['detect']
+        
+        self.directory      = config['directory']['folder'] # IMAGE DIRECTORY
+        self.imgFormat      = config['directory']['format']
+        self.path           = None
+        self.fileName       = config["directory"]['readName']
         self.filePath       = None
-        self.fileSaveName   = config["opencv"]['writeName']
-
-        self.config         = config["tesseract"]['config']
-        self.detect         = config["tesseract"]['detect']
+        self.fileSaveName   = config["directory"]['writeName']
     
     def main(self):
         try:
@@ -65,24 +64,25 @@ class TVAdBlocker:
             while True:
                 scene = self.ws.call(requests.GetCurrentScene())
                 sceneName = scene.getName()
-                file_path = os.path.join(directory, f"{sceneName}.{self.imgFormat}")
- 
+                sceneFilePath = os.path.join(directory, f"{sceneName}.{self.imgFormat}")
+                readFileName = self.fileName
+                readFilePath = os.path.join(directory, f"{readFileName}.{self.imgFormat}")
 
-                screenshot = self.ws.call(requests.TakeSourceScreenshot(sourceName=sceneName, embedPictureFormat=self.imgFormat, saveToFilePath=file_path))
+                screenshot = self.ws.call(requests.TakeSourceScreenshot(sourceName=sceneName, embedPictureFormat=self.imgFormat, saveToFilePath=sceneFilePath))
                 #print(screenshot.data()['sourceName'])
                 
                 #screenshot_data_64 = screenshot.datain['img']
                 #header, encoded_64 = screenshot_data_64.split("base64,", 1)
                 #screenshot_data_byte = base64.b64decode(encoded_64)
                 
-                screenshot_blob = cv2.imread(file_path)
+                screenshot_blob = cv2.imread(sceneFilePath)
 
                 # Convert the screenshot to a NumPy array
                 #img = np.frombuffer(screenshot_data_byte, dtype=np.uint8)
 
                 # Convert RGBA to BGR (OpenCV format)
                 #frame = cv.cvtColor(img, cv.COLOR_RGBA2BGR)
-                #gray_frame = cv.cvtColor(img, cv.COLOR_RGBA2GRAY)
+                grayscale = cv2.cvtColor(screenshot_blob, cv2.COLOR_RGBA2GRAY)
                 frame = cv2.cvtColor(screenshot_blob, cv2.COLOR_RGBA2BGR)
                 
                 # Resize the logo image to be smaller than or equal to the frame image.
@@ -97,7 +97,7 @@ class TVAdBlocker:
                 # to specified directory  
                 os.chdir(directory)
                 
-                #cv.imwrite("screenshot.jpg", frame)
+                cv2.imwrite(readFilePath, grayscale)
                 #cv.imwrite("template.jpg", logo)
                     
                 #TM_SQDIFF_NORMED / TM_CCORR_NORMED / TM_CCOEFF_NORMED
@@ -126,18 +126,16 @@ class TVAdBlocker:
                     self.ws.call(requests.SetCurrentScene(self.tv_scene))
                 else:
                     try:
-                        path = self.path
-                        fileName = self.fileName
-                        filePath = os.path.join(path, f"{fileName}")
+                        
                         fileSaveName = self.fileSaveName
-                        fileSavePath = os.path.join(path, f"{fileSaveName}")
+                        fileSavePath = os.path.join(directory, f"{fileSaveName}.{self.imgFormat}")
                         code = cv2.COLOR_BGR2GRAY
                         myconfig = self.config #r"--psm 7 --oem 3" #--psm 6/7/10/11/13 --oem 3
-                        flag = False
+                        flag = 0
                         mylist = self.detect.split(",")
 
 
-                        blob = cv2.imread(filePath)
+                        blob = cv2.imread(readFilePath)
                         frame = cv2.cvtColor(blob, code)
                         frame_height, frame_with = frame.shape[:2]
                         cv2.imwrite(fileSavePath, frame)
@@ -146,18 +144,19 @@ class TVAdBlocker:
                         extractor = pytextractor.PyTextractor()
                         text_from_image = extractor.get_image_text(fileSavePath, config=myconfig)
 
+                        print(text_from_image)
 
                         for ele_arr in text_from_image:
                             for ele_list in mylist:
                                 if ele_list.lower() in ele_arr.lower() or ele_arr.strip().lower() == ele_list.lower():
-                                    flag = True
+                                    flag += 1
                                     break
                                 else:
                                     continue
-                            if flag:
+                            if flag > 1:
                                 break
                         
-                        if flag == True:
+                        if flag > 1:
                             print("Text detected")
                             self.ws.call(requests.SetCurrentScene(self.tv_scene))
                         else:
@@ -166,8 +165,6 @@ class TVAdBlocker:
 
                     except Exception as e:
                         print(f"Error: {e}")
-                    finally:
-                        print("Tesseract")
 
                 time.sleep(self.sleep)
 
